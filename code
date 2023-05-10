@@ -1,0 +1,548 @@
+# network will be maintained as follows: { user x : [ [ (y, amount, interest per day, days to repay) ], [ (z, amount, interest per day, days to repay) ] ] } }
+import tkinter as tk
+from tkinter import Misc, simpledialog
+from tkinter import *
+from tkinter import messagebox
+from turtle import width
+from PIL import Image, ImageTk
+import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+
+
+
+# Create the main window
+root = tk.Tk()
+
+# Set the window size
+root.geometry("1250x650")
+
+
+canvas=tk.Canvas(root, width=1250, height=650)
+# canvas.create_image(0, 0, image=bg_image, anchor="nw")
+canvas.grid(columnspan=7, rowspan=12)
+canvas.configure(background='black')
+instructions=tk.Label(root, text='New quetta Bismillah financial management system!', font=20,
+fg='black')
+instructions.configure(background='#F6BA00')
+instructions.grid(columnspan=3, column=2, row=1)
+root.configure(background='black')
+
+class MultiInputDialog(simpledialog.Dialog):
+    def _init_(self, parent, title, fields):
+        self.fields=fields
+        super()._init_(parent,title)
+
+    def body(self,frame):
+        self.entries=[]
+        for field in self.fields:
+            field_label=tk.Label(frame,text=field+':')
+            field_label.pack(side="left")
+            entry=tk.Entry(frame)
+            entry.pack(side="left")
+            self.entries.append(entry)
+
+    def apply(self):
+        self.result=[entry.get() for entry in self.entries]
+
+def multiinput_dialog(title,fields):
+    root=tk.Tk()
+    dialog= MultiInputDialog(root,title,fields)
+    root.destroy()
+    return dialog.result
+
+    
+global networks
+networks={}
+def my_networks():
+    lst=[]
+    for i in networks.keys():
+        lst.append(i)
+    messagebox.showinfo(title='Networks', message=lst)
+
+# Create_new_network: create a new network g
+def create_new_network():
+    network = simpledialog.askstring('Create network', 'Network:')
+    networks[network]={}
+    messagebox.showinfo(title=network, message= ('Network', network, 'created!'))
+
+def view_network():
+    network = simpledialog.askstring('Create network', 'Network:')
+    messagebox.showinfo(title=network, message= networks[network])
+
+# Add_payee: add x to network g
+def add_payee():
+    
+    fields=["network","payee"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,payee=inputs
+    else:
+        print("No inputs provided.")
+
+    if payee not in networks[network]:
+        networks[network][payee] = [[],[]]
+        messagebox.showinfo(title=network, message=('Payee ' + payee + ' added successfully to the network ' + network))
+    else:
+        messagebox.showinfo(title='Error!', message=(payee + ' already in ' + network + '!'))
+     
+# Insert_loan_taken: add y to x in network g
+def insert_loan_taken():
+
+    fields=["network","Loan taken by","Loan taken from","amount","interest_rate", "days_to_repay"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,x,y,amount,interest_rate,days_to_repay=inputs
+    else:
+        print("No inputs provided.")
+     
+    # network=simpledialog.askstring('Choose network', 'Network:')
+    # x=simpledialog.askstring('Payee 1', 'Loan taken by:')
+    # y=simpledialog.askstring('Payee 2', 'Loan taken from:')
+    # amount=int(simpledialog.askstring('Loan amount', 'Amount:'))
+    # interest_rate=float(simpledialog.askstring('Add interest', 'Daily interest rate:'))
+    # days_to_repay=int(simpledialog.askstring('Add repayment date', 'Days to repay loan:'))
+    if int(days_to_repay)<1:
+        messagebox.showinfo(title='error', message='days cannot be negative')
+        return
+    if x not in networks[network]:
+        networks[network][x] = [[],[]]
+    if y not in networks[network]: 
+        networks[network][y] = [[],[]]
+    for i in networks[network][y][0]:
+        if i[0]==x:
+            messagebox.showinfo(title='error', message='can not take loan from someone you have given to')
+            return
+    
+    interest = int(((float(interest_rate)/100) * int(amount)) * int(days_to_repay))
+    total = int(amount) + interest
+
+    # add y to x
+    loan_taken = (y,total,interest,days_to_repay)
+    loans_taken = networks[network][x][0]
+    loans_given = networks[network][x][1]
+    if loans_taken == []:
+        loans_taken.append(loan_taken)
+    else:
+        index = 0
+        for person in loans_taken:
+            if int(days_to_repay) >= person[3]:
+                index +=1
+        loans_taken.insert(index,loan_taken) 
+    networks[network][x] = [loans_taken,loans_given]
+
+    # add x to y
+    
+    loan_given = (x,total,interest,days_to_repay) 
+    loans_taken = networks[network][y][0]
+    loans_given = networks[network][y][1] 
+    if loans_given == []:
+        loans_given.append(loan_given)
+    else:
+        index = 0
+        for person in loans_given:
+            if int(days_to_repay) >= person[3]:
+                index +=1
+        loans_given.insert(index,loan_given) 
+    networks[network][y] = [loans_taken,loans_given] 
+    messagebox.showinfo(title=network, message=f"Loan details:\n\nPayee who took the loan: {x}\nPayee who gave the loan: {y}\nLoan amount: {amount}\nDaily interest rate: {interest_rate}\nDays to repay the loan: {days_to_repay}")
+
+
+# Insert_loan_given: add z to x in network g
+def insert_loan_given():
+
+    fields=["network","Loan given by","Loan given to","amount","interest_rate", "days_to_repay"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,x,z,amount,interest_rate,days_to_repay=inputs
+    else:
+        print("No inputs provided.")
+    # network=simpledialog.askstring('Choose network', 'Network:')
+    # x=simpledialog.askstring('Payee 1', 'Loan given by:')
+    # z=simpledialog.askstring('Payee 2', 'Loan given to:')
+    # amount=int(simpledialog.askstring('Loan amount', 'Amount:'))
+    # interest_rate=float(simpledialog.askstring('Add repayment date','Daily interest rate:'))
+    # days_to_repay=int(simpledialog.askstring('Add repayement date','Days to repay loan:'))
+    if int(days_to_repay)<1:
+        messagebox.showinfo(title='error', message='days cannot be negative')
+        return
+    if x not in networks[network]:
+        networks[network][x] = [[],[]]
+    if z not in networks[network]: 
+        networks[network][z] = [[],[]]
+    for i in networks[network][x][0]:
+        i[0]==z
+        messagebox.showinfo(title='error',message='cant take give loan from someone you have taken')
+        return
+    interest = int(((int(interest_rate)/100) * int(amount)) * int(days_to_repay))
+    total = int(amount) + interest
+
+ # add z to x
+    loan_given = (z,total,interest,days_to_repay) 
+    loans_taken = networks[network][x][0]
+    loans_given = networks[network][x][1] 
+    if loans_given == []:
+        loans_given.append(loan_given)
+    else:
+        index = 0
+        for person in loans_given:
+            if int(days_to_repay) >= person[3]:
+                index +=1
+        loans_given.insert(index,loan_given) 
+    networks[network][x] = [loans_taken,loans_given] 
+ # add x to z
+    
+    loan_taken = (x,total,interest,days_to_repay)
+    loans_taken = networks[network][z][0]
+    loans_given = networks[network][z][1]
+    if loans_taken == []:
+        loans_taken.append(loan_taken)
+    else:
+        index = 0
+        for person in loans_taken:
+            if int(days_to_repay) >= person[3]:
+                index +=1
+        loans_taken.insert(index,loan_taken) 
+    networks[network][z] = [loans_taken,loans_given]
+    messagebox.showinfo(title=network, message=f"Loan details:\n\nPayee who took the loan: {z}\nPayee who gave the loan: {X}\nLoan amount: {amount}\nDaily interest rate: {interest_rate}\nDays to repay the loan: {days_to_repay}")
+
+
+# Delete_payee: remove x from everywhere in network g
+def delete_payee():
+
+    fields=["network","Payee to be deleted"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,x=inputs
+    else:
+        print("No inputs provided.")
+
+    # network=simpledialog.askstring('Choose network', 'Network:')
+    # x=simpledialog.askstring('Payee to be deleted', 'Payee:')
+    if x in networks[network]:
+        networks[network].pop(x)
+        for user in networks[network]:
+            loans_taken = networks[network].get(user)[0]
+            for person in loans_taken:
+                if person[0] == x:
+                    loans_taken.remove(person)
+                    break
+            loans_given = networks[network].get(user)[1]
+            for person in loans_given:
+                if person[0] == x:
+                    loans_given.remove(person)
+                    break
+    messagebox.showinfo(title=network, message=f"Payee '{x}' has been successfully deleted from the '{network}' network.") 
+
+
+# Loan_repayed: remove y from x in network g ie x has completed payment to y
+def loan_repayed():
+
+    fields=["network","Loan repayed by","Loan repayed to"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,x,y=inputs
+    else:
+        print("No inputs provided.")
+    # network=simpledialog.askstring('Choose network', 'Network:')
+    # x=simpledialog.askstring('Payee 1', 'Loan repayed by:')
+    # y=simpledialog.askstring('Payee 2', 'Loan repayed to:')
+    if x in networks[network] and y in networks[network]:
+        lst = networks[network].get(x)
+        loans_taken = lst[0]
+        loans_given = lst[1]
+        index = 0
+        for loan in loans_taken:
+            if loan[0] == y:
+                loans_taken.pop(index)
+                break
+            index += 1
+        networks[network][x] = [loans_taken,loans_given]
+        lst = networks[network].get(y)
+        loans_taken = lst[0]
+        loans_given = lst[1]
+        index = 0
+        for loan in loans_given:
+            if loan[0] == x:
+                loans_given.pop(index)
+                break
+            index += 1
+        networks[network][y] = [loans_taken,loans_given]
+    messagebox.showinfo(title=network, message=f"Loan between {x} and {y} repaid successfully in network {network}.")
+
+
+def minCashFlow(amount, network):
+    mdebtind = 0
+    for i in range(len(networks[network])):
+        if (amount[i] < amount[mdebtind]):
+            mdebtind = i
+    maxdebtuser=list(networks[network].keys())[mdebtind]
+    mcreditind = 0
+    for i in range(len(networks[network])):
+        if (amount[i] > amount[mcreditind]):
+            mcreditind = i
+    maxcredituser=list(networks[network].keys())[mcreditind]
+    if amount[mcreditind]==0 and amount[mdebtind]==0:
+        return 0
+    x=min(amount[mcreditind], (-1*amount[mdebtind]))
+    amount[mcreditind]=amount[mcreditind]-x
+    amount[mdebtind]=amount[mdebtind]+x
+    messagebox.showinfo(title='Follow these steps!', message=(maxdebtuser, 'pays', 
+    x, 'to', maxcredituser))
+    minCashFlow(amount, network)
+
+#finds the shortest path i.e. minimum cash flow to repay all loans
+def optimize_loans():
+    
+    network=simpledialog.askstring('Choose network', 'Network:')
+    people=list(networks[network].keys())
+    amount=[]
+    for i in range(len(networks[network])):
+        amount.append(0)
+    for i in range(len(networks[network])):
+        debts=0
+        credit=0
+        for j in networks[network][people[i]][0]:
+            debts+=j[1]
+        for k in networks[network][people[i]][1]:
+            credit+=k[1]
+        net=credit-debts
+        amount[i]=net
+    minCashFlow(amount, network)
+
+# Update_pay: if x pays a portion of the amount he owes y, amount is updated
+
+def update_pay():
+
+    
+    fields=["network","Partial loan paid by","Partial loan paid to","amount"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,x,y,amount=inputs
+    else:
+        print("No inputs provided.")
+    # network=simpledialog.askstring('Choose network', 'Network:')
+    # x=simpledialog.askstring('Payee 1', 'Partial loan paid by:')
+    # y=simpledialog.askstring('Payee 2', 'Partial loan paid to:')
+    # amount=int(simpledialog.askstring('Partial loan amount', 'Amount:')) 
+    if x in networks[network] and y in networks[network]:
+        # update in x
+        people1 = networks[network][x][0]
+        people2 = networks[network][x][1] 
+        index = 0
+        for p in people1:
+            if [p[0]][0] == y: 
+                val = people1.pop(index)
+                amount = val[1]-int(amount)
+                if int(amount) <= 0:
+                    if x in networks[network] and y in networks[network]:
+                        lst = networks[network].get(x)
+                        loans_taken = lst[0]
+                        loans_given = lst[1]
+                        index = 0
+                        for loan in loans_taken:
+                            if loan[0] == y:
+                                loans_taken.pop(index)
+                                break
+                            index += 1
+                        networks[network][x] = [loans_taken,loans_given]
+                        lst = networks[network].get(y)
+                        loans_taken = lst[0]
+                        loans_given = lst[1]
+                        index = 0
+                        for loan in loans_given:
+                            if loan[0] == x:
+                                loans_given.pop(index)
+                                break
+                            index += 1
+                        networks[network][y] = [loans_taken,loans_given]
+                else: 
+                    val2 = (y,amount,val[2],val[3])
+                    people1.insert(index,val2)
+                    networks[network][x] = [people1,people2]
+                break
+            index += 1
+    # update in y
+    people1 = networks[network][y][0]
+    people2 = networks[network][y][1]
+    index = 0
+    for p in people2:
+        if [p[0]][0] == x:
+            val = people2.pop(index)
+            if int(amount) <= 0:
+                if y in networks[network] and x in networks[network]:
+                    lst = networks[network].get(y)
+                    loans_taken = lst[0]
+                    loans_given = lst[1]
+                    index = 0
+                    for loan in loans_taken:
+                        if loan[0] == x:
+                            loans_taken.pop(index)
+                            break
+                        index += 1
+                    networks[network][y] = [loans_taken,loans_given]
+                    lst = networks[network].get(x)
+                    loans_taken = lst[0]
+                    loans_given = lst[1]
+                    index = 0
+                    for loan in loans_given:
+                        if loan[0] == y:
+                            loans_given.pop(index)
+                            break
+                        index += 1
+                    networks[network][x] = [loans_taken,loans_given]
+            else: 
+                val2 = (x,amount,val[2],val[3])
+                people2.insert(index,val2)
+                networks[network][x] = [people1,people2]
+            break
+        index += 1 
+    messagebox.showinfo(title=network, message=f"Network: {network}\nPartial loan payment of {amount} from {x} to {y} was recorded.") 
+ 
+# People _who_i_owe: returns index 0 of dict[x] : (list of people (and amount with interest) i owe)
+def people_who_i_owe():
+    
+    fields=["network","Choose user"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,x=inputs
+    else:
+        print("No inputs provided.")
+    lst = []
+    people = networks[network][x][0]
+    for p in people:
+        lst.append((p[0],'=', p[1]))
+    messagebox.showinfo(title='People who I owe:', message=lst)
+# People_who_owe_me: returns index 1 of dict[x] : (list of people (and amount with interest) who owe me)
+def people_who_owe_me():
+    fields=["network","Choose user"]
+    inputs=multiinput_dialog("Enter Information", fields)
+    if inputs:
+        network,x=inputs
+    else:
+        print("No inputs provided.")
+    # network=simpledialog.askstring('Choose network', 'Network:')
+    # x=simpledialog.askstring('Choose user', 'User:')
+    lst = []
+    people = networks[network][x][1]
+    for p in people:
+        lst.append((p[0],'=', p[1]))
+    messagebox.showinfo(title='People who owe me:', message=lst)
+
+def display_network():
+    network=simpledialog.askstring('Choose network', 'Network:')
+    G = nx.DiGraph()
+    edges=[]
+    weights={}
+    for i in networks[network]:
+        for j in networks[network][i][0]:
+            edges.append((i,j[0]))
+            weights[(i,j[0])]=j[1]
+    for i in edges:
+        G.add_edges_from([i], weight=weights[i])
+    edge_labels=dict([((u,v,),d['weight'])
+        for u,v,d in G.edges(data=True)])
+    pos=nx.circular_layout(G)
+    nx.draw_networkx_nodes(G, pos, node_size=1500)
+    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), edge_color='black', 
+arrows=True, arrowstyle='-|>', arrowsize=20, node_size=1500)
+    nx.draw_networkx_labels(G, pos)
+    nx.draw_networkx_edge_labels(G,pos,edge_labels=edge_labels)
+    plt.show()
+
+networks_txt=tk.StringVar()
+networks_btn=tk.Button(root, textvariable=networks_txt, 
+command=lambda:my_networks(), font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+networks_txt.set('My networks')
+networks_btn.grid(column=1, row=2)
+
+network_txt=tk.StringVar()
+network_btn=tk.Button(root, textvariable=network_txt, 
+command=lambda:view_network(), font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+network_txt.set('View network')
+network_btn.grid(column=4, row=2)
+
+create_txt=tk.StringVar()
+create_btn=tk.Button(root, textvariable=create_txt, 
+command=lambda:create_new_network(), font='Jika', bg='#F6BA00', fg='black', 
+height=2, width=15)
+create_txt.set('Create network')
+create_btn.grid(column=1, row=3)
+
+add_payee_txt=tk.StringVar()
+add_payee_btn=tk.Button(root, textvariable=add_payee_txt, 
+command=lambda:add_payee(), font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+add_payee_txt.set('Add payee')
+add_payee_btn.grid(column=1, row=4)
+
+insert_loan_taken_txt=tk.StringVar()
+insert_loan_taken_btn=tk.Button(root, textvariable=insert_loan_taken_txt, 
+command=lambda:insert_loan_taken(), font='Jika', bg='#F6BA00', fg='black', 
+height=2, width=15)
+insert_loan_taken_txt.set('Insert loan taken')
+insert_loan_taken_btn.grid(column=1, row=5)
+
+insert_loan_given_txt=tk.StringVar()
+insert_loan_given_btn=tk.Button(root, textvariable=insert_loan_given_txt, 
+command=lambda:insert_loan_given(),font='Jika', bg='#F6BA00', fg='black', height=2,
+width=15)
+insert_loan_given_txt.set('Insert loan given')
+insert_loan_given_btn.grid(column=1, row=6)
+
+delete_payee_txt=tk.StringVar()
+delete_payee_btn=tk.Button(root, textvariable=delete_payee_txt, 
+command=lambda:delete_payee(),font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+delete_payee_txt.set('Delete payee')
+delete_payee_btn.grid(column=1, row=7)
+
+repay_loan_txt=tk.StringVar()
+repay_loan_btn=tk.Button(root, textvariable=repay_loan_txt, 
+command=lambda:loan_repayed(),font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+repay_loan_txt.set('Repay loan')
+repay_loan_btn.grid(column=1, row=8)
+
+optimize_loans_txt=tk.StringVar()
+optimize_loans_btn=tk.Button(root, textvariable=optimize_loans_txt, 
+command=lambda:optimize_loans(),font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+optimize_loans_txt.set('Optimize loans')
+optimize_loans_btn.grid(column=4, row=4)
+
+update_loan_txt=tk.StringVar()
+update_loan_btn=tk.Button(root, textvariable=update_loan_txt, 
+command=lambda:update_pay(),font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+update_loan_txt.set('Partial Repayment')
+update_loan_btn.grid(column=4, row=5)
+
+people1_txt=tk.StringVar()
+people1_btn=tk.Button(root, textvariable=people1_txt, 
+command=lambda:people_who_i_owe(),font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+people1_txt.set('Who do I owe?')
+people1_btn.grid(column=4, row=6)
+
+people2_txt=tk.StringVar()
+people2_btn=tk.Button(root, textvariable=people2_txt, 
+command=lambda:people_who_owe_me(),font='Jika', bg='#F6BA00', fg='black', height=2,
+width=15)
+people2_txt.set('Who owes me?')
+people2_btn.grid(column=4, row=7)
+
+display_network_txt=tk.StringVar()
+display_network_btn=tk.Button(root, textvariable=display_network_txt, 
+command=lambda:display_network(),font='Jika', bg='#F6BA00', fg='black', height=2, 
+width=15)
+display_network_txt.set('Display network')
+display_network_btn.grid(column=4, row=3)
+
+canvas=tk.Canvas(root, width=300, height=580)
+canvas.grid(columnspan=3)
+root.mainloop()
