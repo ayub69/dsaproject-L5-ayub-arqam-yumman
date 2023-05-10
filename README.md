@@ -9,13 +9,13 @@ a loan management system. where you can create multiple networks, take or give l
 6) any function you choose will prompt you to input whats required.
 7) amount=integer, interest rate=float, users= string, days=integers
 8) you can input any data you want to sample data is just given for refrence.
-$
-sample data:
-network: karachi
-taken from, taken by, amount, interest rate, days
-  A,          B,       1000,      5,          10
-  B,          C,       1500,      7,          15
-  C,          D,       2000,      6,          20
-  D,          E,       2500,      8,          25
-  E,          A,       3000,      5,          30
-  $
+9) sample data given below
+10) network: karachi
+
+0.taken from, taken by, amount, interest rate, days
+1.  A,          B,       1000,      5,          10
+2.  B,          C,       1500,      7,          15
+3.  C,          D,       2000,      6,          20
+4.  D,          E,       2500,      8,          25
+5.  E,          A,       3000,      5,          30
+
